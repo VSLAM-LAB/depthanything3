@@ -70,8 +70,20 @@ class VSLAMLabStreaming(DA3_Streaming):
     def run(self):
         self.img_list = list(self.image_paths)
         print(f"Found {len(self.img_list)} images (from the experiment's rgb csv)")
+
+        if len(self.img_list) <= self.chunk_size:
+            # Single chunk: upstream's pose export trims every non-last chunk by overlap_e and treats the
+            # first chunk as non-last, which would drop every pose here; there is nothing to align or close.
+            print(f"Sequence fits in one chunk ({len(self.img_list)} <= chunk_size {self.chunk_size}): no overlap trimming, loop closure off")
+            self.overlap = 0
+            self.overlap_e = 0
+            self.loop_enable = False
+
         if self.loop_enable:
-            self.loop_detector.image_paths = [Path(p) for p in self.img_list]  # skips LoopDetector.get_image_paths' glob
+            # LoopDetector.run() re-globs image_dir; hand it the csv frame list so loop indices match img_list
+            frame_paths = [Path(p) for p in self.img_list]
+            self.loop_detector.image_paths = frame_paths
+            self.loop_detector.get_image_paths = lambda: frame_paths
         self.process_long_sequence()
 
 
