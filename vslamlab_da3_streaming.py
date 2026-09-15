@@ -28,9 +28,9 @@ import torch
 DA3_STREAMING_DIR = Path(__file__).resolve().parent / "da3_streaming"
 sys.path.insert(0, str(DA3_STREAMING_DIR))  # da3_streaming.py imports `loop_utils` relative to its own folder
 
-from da3_streaming import DA3_Streaming  # noqa: E402  (the module file, found before the folder of the same name)
+from da3_streaming import DA3_Streaming, depth_to_point_cloud_vectorized  # noqa: E402  (the module file, found before the folder of the same name)
 from loop_utils.config_utils import load_config  # noqa: E402
-from loop_utils.sim3utils import merge_ply_files, warmup_numba  # noqa: E402
+from loop_utils.sim3utils import merge_ply_files, save_confident_pointcloud_batch, warmup_numba  # noqa: E402
 
 from vslamlab_da3_common import (ensure_salad_checkpoint, load_frames, load_settings, resolve_model_id,  # noqa: E402
                                  show_in_viser, write_trajectory_csv, MODELS)
@@ -71,7 +71,8 @@ class VSLAMLabStreaming(DA3_Streaming):
         self.img_list = list(self.image_paths)
         print(f"Found {len(self.img_list)} images (from the experiment's rgb csv)")
 
-        if len(self.img_list) <= self.chunk_size:
+        single_chunk = len(self.img_list) <= self.chunk_size
+        if single_chunk:
             # Single chunk: upstream's pose export trims every non-last chunk by overlap_e and treats the
             # first chunk as non-last, which would drop every pose here; there is nothing to align or close.
             print(f"Sequence fits in one chunk ({len(self.img_list)} <= chunk_size {self.chunk_size}): no overlap trimming, loop closure off")
@@ -85,6 +86,20 @@ class VSLAMLabStreaming(DA3_Streaming):
             self.loop_detector.image_paths = frame_paths
             self.loop_detector.get_image_paths = lambda: frame_paths
         self.process_long_sequence()
+        if single_chunk:
+            self._save_single_chunk_pointcloud()
+
+    def _save_single_chunk_pointcloud(self):
+        """Upstream writes pcd/<i>_pcd.ply inside the chunk-alignment loop, which a single chunk never enters."""
+        import os
+        chunk = np.load(os.path.join(self.result_unaligned_dir, "chunk_0.npy"), allow_pickle=True).item()
+        points = depth_to_point_cloud_vectorized(chunk.depth, chunk.intrinsics, chunk.extrinsics)
+        save_confident_pointcloud_batch(
+            points=points, colors=chunk.processed_images, confs=chunk.conf,
+            output_path=os.path.join(self.pcd_dir, "0_pcd.ply"),
+            conf_threshold=np.mean(chunk.conf) * self.config["Model"]["Pointcloud_Save"]["conf_threshold_coef"],
+            sample_ratio=self.config["Model"]["Pointcloud_Save"]["sample_ratio"],
+        )
 
 
 def deep_update(base: dict, overrides: dict) -> dict:
@@ -149,12 +164,16 @@ def main() -> None:
     print(f"Trajectory written to {keyframe_csv}")
 
     if vis:
-        import trimesh
+        points, colors = np.zeros((0, 3), np.float32), np.zeros((0, 3), np.uint8)
         combined = run_dir / "pcd" / "combined_pcd.ply"
-        merge_ply_files(str(run_dir / "pcd"), str(combined))
-        cloud = trimesh.load(str(combined), process=False)
-        points = np.asarray(cloud.vertices, dtype=np.float32)
-        colors = np.asarray(cloud.colors)[:, :3].astype(np.uint8) if hasattr(cloud, "colors") and len(cloud.colors) else np.full((len(points), 3), 200, np.uint8)
+        if any((run_dir / "pcd").glob("*_pcd.ply")):
+            import trimesh
+            merge_ply_files(str(run_dir / "pcd"), str(combined))
+            cloud = trimesh.load(str(combined), process=False)
+            points = np.asarray(cloud.vertices, dtype=np.float32)
+            colors = np.asarray(cloud.colors)[:, :3].astype(np.uint8) if hasattr(cloud, "colors") and len(cloud.colors) else np.full((len(points), 3), 200, np.uint8)
+        else:
+            print("(viser) no point cloud written by DA3-Streaming; showing the trajectory only")
         show_in_viser(points, colors, cam_to_world)
 
 
