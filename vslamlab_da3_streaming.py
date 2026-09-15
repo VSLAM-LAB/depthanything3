@@ -17,13 +17,17 @@ so timestamps map one to one. Intermediate results live in <exp_folder>/<exp_it>
 import argparse
 import functools
 import gc
+import os
 import shutil
 import sys
 import time
 from pathlib import Path
 
-import numpy as np
-import torch
+# Large chunks fragment the caching allocator (a 50-frame chunk showed 2.8 GB reserved but unallocated at OOM)
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
 
 DA3_STREAMING_DIR = Path(__file__).resolve().parent / "da3_streaming"
 sys.path.insert(0, str(DA3_STREAMING_DIR))  # da3_streaming.py imports `loop_utils` relative to its own folder
@@ -91,7 +95,6 @@ class VSLAMLabStreaming(DA3_Streaming):
 
     def _save_single_chunk_pointcloud(self):
         """Upstream writes pcd/<i>_pcd.ply inside the chunk-alignment loop, which a single chunk never enters."""
-        import os
         chunk = np.load(os.path.join(self.result_unaligned_dir, "chunk_0.npy"), allow_pickle=True).item()
         points = depth_to_point_cloud_vectorized(chunk.depth, chunk.intrinsics, chunk.extrinsics)
         save_confident_pointcloud_batch(

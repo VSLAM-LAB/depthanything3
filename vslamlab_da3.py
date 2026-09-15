@@ -13,11 +13,15 @@ poses and depth come out in metres. Same shape as the vggt / vggt-omega entry po
 """
 
 import argparse
+import os
 import time
 from pathlib import Path
 
-import numpy as np
-import torch
+# Large windows fragment the caching allocator; expandable segments reclaim the reserved-but-unallocated part
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
 
 from depth_anything_3.api import DepthAnything3
 from vslamlab_da3_common import (load_frames, load_settings, resolve_model_id, show_in_viser, unproject_depth,
