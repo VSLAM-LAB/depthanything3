@@ -17,6 +17,13 @@
 
 </div>
 
+> **VSLAM-LAB fork.** This repository backs the `da3` and `da3-streaming` baselines and the `depth_anything`
+> capability of [VSLAM-LAB](https://github.com/VSLAM-LAB/VSLAM-LAB). On top of upstream
+> [ByteDance-Seed/Depth-Anything-3](https://github.com/ByteDance-Seed/Depth-Anything-3) it adds the entry points
+> `vslamlab_da3.py` (one feed-forward pass over a sequence window) and `vslamlab_da3_streaming.py` (DA3-Streaming over a
+> whole sequence, fed with the experiment's frame list), the shared helpers in `vslamlab_da3_common.py` and their
+> settings yamls. Both write camera-to-world poses to `<exp_folder>/<exp_it>_KeyFrameTrajectory.csv`.
+
 This work presents **Depth Anything 3 (DA3)**, a model that predicts spatially consistent geometry from
 arbitrary visual inputs, with or without known camera poses.
 In pursuit of minimal modeling, DA3 yields two key insights:

@@ -34,3 +34,6 @@ src/debug_main.py
 src/outputs
 temp*.png
 /outputs
+
+# VSLAM-LAB install logs (BaselineVSLAMLAB.install)
+install_*.txt

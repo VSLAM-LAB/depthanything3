@@ -1,0 +1,19 @@
+%YAML 1.2
+---
+cam_mono: rgb_0
+
+# DA3-Streaming knobs not exposed as experiment parameters (da3_streaming/configs/base_config.yaml
+# documents them all); anything under `streaming:` is merged over that config before the run.
+streaming:
+  Model:
+    align_lib: triton          # triton (GPU) | torch (GPU) | numba (CPU) | numpy (CPU)
+    align_method: sim3         # sim3 | se3 | scale+se3
+    ref_view_strategy: saddle_balanced
+    ref_view_strategy_loop: saddle_balanced
+    save_depth_conf_result: false   # per-frame npz (rgb/depth/conf/K) under <run>/results_output, large
+    delete_temp_files: true
+  Loop:
+    SALAD:
+      similarity_threshold: 0.85
+    SIM3_Optimizer:
+      lang_version: python     # cpp needs the fastloop extension built; python is the fallback upstream uses
