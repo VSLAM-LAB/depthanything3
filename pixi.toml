@@ -1,0 +1,71 @@
+# VSLAM-LAB environment for Depth Anything 3 (not published as a conda package: installed from this checkout).
+# One environment serves VSLAM-LAB's `da3` baseline (vslamlab_da3.py, single window), its `da3-streaming` baseline
+# (vslamlab_da3_streaming.py, chunked full sequence + SALAD loop closure) and the depth_anything capability; their
+# VSLAM-LAB tasks forward here (cwd Baselines/Depth-Anything-3).
+[workspace]
+authors = ["vslamlab <vslamlab@gmail.com>"]
+channels = ["https://prefix.dev/conda-forge", "https://prefix.dev/vslamlab/vslamlab"]
+name = "depthanything3"
+platforms = [{ name = "linux-64-cuda129", platform = "linux-64", cuda = "12.9" }]
+version = "0.1.0"
+
+[tasks]
+install = "pip install --no-deps --no-build-isolation -e ."
+# TORCH_HOME: <VSLAM-LAB>/Baselines/torch_home (this checkout is Baselines/Depth-Anything-3), where the SALAD
+# checkpoint (dino_salad.ckpt) is shared with vggtslam; DA3 weights come from Hugging Face at first run
+execute-mono = { cmd = "python vslamlab_da3.py", env = { TORCH_HOME = "$PIXI_PROJECT_ROOT/../torch_home" } }
+execute-mono-streaming = { cmd = "python vslamlab_da3_streaming.py", env = { TORCH_HOME = "$PIXI_PROJECT_ROOT/../torch_home" } }
+test = "python -I -c 'import depth_anything_3.api, faiss, numba, pypose, xformers; print(\"OK\")' && python vslamlab_da3.py --help > /dev/null && python vslamlab_da3_streaming.py --help > /dev/null && echo OK"
+
+[dependencies]
+python = "3.11.*"
+pip = "*"
+cuda-version = "12.9.*"  # same PyTorch build as the other CUDA 12.9 environments (shared pixi cache)
+
+# Torch
+pytorch-gpu = "2.7.*"
+torchvision = "*"
+xformers = "*"           # depth_anything_3.model.dinov2 (swiglu ffn)
+numpy = "<2"
+
+# depth_anything_3.api import chain (model + export modules are imported eagerly)
+pillow = "*"
+einops = "*"
+huggingface_hub = "*"
+safetensors = "*"
+omegaconf = "*"
+addict = "*"
+opencv = "*"
+imageio = "*"
+trimesh = "*"
+plyfile = "*"
+evo = "*"                # utils.pose_align
+pycolmap = "*"           # utils.export.colmap
+scipy = "*"
+matplotlib = "*"
+tqdm = "*"
+
+# vslamlab_da3*.py
+pandas = "*"
+pyyaml = "*"
+viser = "=0.2.23"
+
+# da3_streaming/ (VGGT-Long style chunking, SALAD loop closure, Sim(3) pose graph)
+faiss-gpu = "*"
+numba = "*"
+pypose = { version = "==0.7.3", channel = "https://prefix.dev/vslamlab/vslamlab" }
+triton = "*"             # align_lib: triton
+# Triton builds its kernel launcher against cuda.h / the CUDA runtime headers (loop_utils/sim3utils.py)
+cuda-driver-dev = "*"
+cuda-cudart-dev = "*"
+scikit-learn = "*"
+rich = "*"
+prettytable = "*"
+
+# build backend of pyproject.toml, needed by the --no-build-isolation editable install
+hatchling = "*"
+hatch-vcs = "*"
+
+[pypi-dependencies]
+# utils.export.gs imports `moviepy.editor`, removed in moviepy 2.x (conda-forge only ships 2.x); upstream pins 1.0.3
+moviepy = "==1.0.3"

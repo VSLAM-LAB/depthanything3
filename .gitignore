@@ -37,3 +37,6 @@ temp*.png
 
 # VSLAM-LAB install logs (BaselineVSLAMLAB.install)
 install_*.txt
+
+# pixi (VSLAM-LAB environment)
+.pixi/
