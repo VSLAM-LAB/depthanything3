@@ -15,7 +15,9 @@ install = "pip install --no-deps --no-build-isolation -e ."
 # checkpoint (dino_salad.ckpt) is shared with vggtslam; DA3 weights come from Hugging Face at first run
 execute-mono = { cmd = "python vslamlab_da3.py", env = { TORCH_HOME = "$PIXI_PROJECT_ROOT/../torch_home" } }
 execute-mono-streaming = { cmd = "python vslamlab_da3_streaming.py", env = { TORCH_HOME = "$PIXI_PROJECT_ROOT/../torch_home" } }
-test = "python -I -c 'import depth_anything_3.api, faiss, numba, pypose, xformers; print(\"OK\")' && python vslamlab_da3.py --help > /dev/null && python vslamlab_da3_streaming.py --help > /dev/null && echo OK"
+# depth_anything capability (VSLAM-LAB Capabilities/depth_anything.py passes --sequence-path folders)
+depth-inference = "python vslamlab_depth_anything.py"
+test = "python -I -c 'import depth_anything_3.api, faiss, numba, pypose, xformers; print(\"OK\")' && python vslamlab_da3.py --help > /dev/null && python vslamlab_da3_streaming.py --help > /dev/null && python vslamlab_depth_anything.py --help > /dev/null && echo OK"
 
 [dependencies]
 python = "3.11.*"
